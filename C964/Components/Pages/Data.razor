@@ -1,0 +1,79 @@
+﻿@page "/data"
+
+@using C964.Custom
+@using Microsoft.AspNetCore.Hosting
+@using Newtonsoft.Json
+
+@rendermode InteractiveServer
+
+@inject IWebHostEnvironment webHostEnvironment
+
+<PageTitle>Data</PageTitle>
+
+<h2>The raw data used for this project.</h2>
+
+<Grid TItem="InsuranceData"
+      AllowFiltering="true"
+      AllowPaging="true"
+      PageSizeSelectorVisible="true"
+      PageSize="20"
+      PageSizeSelectorItems="@(new int[] { 5,10,20, 50, 100, 2000 })"
+      AllowSorting="true"
+      AllowSelection="true"
+      Class="table table-hover table-bordered table-striped"
+      DataProvider="RecordsDataProvider"
+      Responsive="true"
+      RowKeySelector="(record) => record.Id"
+      SelectionMode="GridSelectionMode.Multiple">
+
+    <GridColumns>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Age" PropertyName="Age" SortKeySelector="item => item.Age">
+            @context.Age
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Sex" PropertyName="Sex" SortKeySelector="item => item.Sex">
+            @context.Sex
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="BMI" PropertyName="BMI" SortKeySelector="item => item.BMI">
+            @context.BMI
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Children" PropertyName="Children" SortKeySelector="item => item.Children">
+            @context.Children
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Smoker" PropertyName="Smoker" SortKeySelector="item => item.Smoker">
+            @context.Smoker
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Region" PropertyName="Region" SortKeySelector="item => item.Region">
+            @context.Region
+        </GridColumn>
+
+        <GridColumn TItem="InsuranceData" HeaderText="Charges" PropertyName="Charges" SortKeySelector="item => item.Charges">
+            @context.Charges
+        </GridColumn>
+
+    </GridColumns>
+
+</Grid>
+
+@code {
+    private IEnumerable<InsuranceData> records = default!;
+
+    private async Task<GridDataProviderResult<InsuranceData>> RecordsDataProvider(GridDataProviderRequest<InsuranceData> request)
+    {
+        if (records is null)
+        {
+            string filePath = Path.Combine(webHostEnvironment.WebRootPath, "Data/InsuranceData.json");
+            string jsonString = File.ReadAllText(filePath);
+            records = JsonConvert.DeserializeObject<List<InsuranceData>>(jsonString);            
+        }
+
+        return await Task.FromResult(request.ApplyTo(records));
+    }
+
+
+}

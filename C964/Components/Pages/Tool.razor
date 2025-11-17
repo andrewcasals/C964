@@ -1,0 +1,145 @@
+﻿@page "/tool"
+
+@using C964.Custom
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.Extensions.ML
+@using Microsoft.ML
+@using Newtonsoft.Json
+@using static C964.HealthInsuranceChargesPredictor
+
+@rendermode InteractiveServer
+
+@inject IWebHostEnvironment webHostEnvironment
+
+<PageTitle>Tool</PageTitle>
+
+<h2>Health Insurance Charges Estimation Tool.</h2>
+
+<div>
+
+    <EditForm Model="myForm">
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">Age: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <NumberInput TValue="int" ValueExpression="@(() => myForm.Age)"
+                             Value="@myForm.Age"
+                             ValueChanged="@((int value) => myForm.Age = value)"
+                             EnableMinMax="true" Min="18" Max="64"
+                             Style="width:120px" />
+            </div>
+        </div>
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">Sex: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <InputSelect ValueExpression="@(() => myForm.Sex)"
+                             Value="@myForm.Sex"
+                             ValueChanged="@((string value) => myForm.Sex = value)"
+                             Style="width:120px">
+                    <option value="male" selected>Male</option>
+                    <option value="female">Female</option>
+                </InputSelect>
+            </div>
+        </div>
+
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">BMI: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <NumberInput TValue="double" ValueExpression="@(() => myForm.BMI)"
+                             Value="@myForm.BMI"
+                             ValueChanged="@((double value) => myForm.BMI = value)"
+                             EnableMinMax="true" Min="10.00" Max="60.00"
+                             Style="width:120px" />
+            </div>
+        </div>
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">Children: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <NumberInput TValue="int" ValueExpression="@(() => myForm.Children)"
+                             Value="@myForm.Children"
+                             ValueChanged="@((int value) => myForm.Children = value)"
+                             EnableMinMax="true" Min="0" Max="5"
+                             Style="width:120px" />
+            </div>
+        </div>
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">Smoker: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <InputSelect ValueExpression="@(() => myForm.Smoker)"
+                             Value="@myForm.Smoker"
+                             ValueChanged="@((string value) => myForm.Smoker = value)"
+                             Style="width:120px">
+                    <option value="yes" selected>Smoker</option>
+                    <option value="no">Non-Smoker</option>
+                </InputSelect>
+            </div>
+        </div>
+
+        <div class="form-group row mb-3">
+            <label class="col-md-2 col-form-label">Region: <span class="text-danger"></span></label>
+            <div class="col-md-10">
+                <InputSelect ValueExpression="@(() => myForm.Region)"
+                             Value="@myForm.Region"
+                             ValueChanged="@((string value) => myForm.Region = value)"
+                             Style="width:120px">
+                    <option value="southwest" selected>South West</option>
+                    <option value="southeast">South East</option>
+                    <option value="northwest">North West</option>
+                    <option value="northeast">North East</option>
+                </InputSelect>
+            </div>
+        </div>
+
+    </EditForm>
+
+    <div class="horizontal-separator"></div>
+
+    <div class="form-group row mb-3">
+        <label class="col-md-2 col-form-label">Estimated Cost: <span class="text-danger"></span></label>
+        <div class="col-md-10">
+            $@estimate
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private string estimate = "...calculating...";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        UpdateEstimate();
+    }
+
+    private void UpdateEstimate()
+    {
+        var input = new ModelInput();
+        input.Age = myForm.Age;
+        input.Sex = myForm.Sex;
+        input.Bmi = (float)myForm.BMI;
+        input.Children = myForm.Children;
+        input.Smoker = myForm.Smoker == "yes" ? true : false;
+        input.Region = myForm.Region;
+        var prediction = HealthInsuranceChargesPredictor.Predict(input);
+
+        estimate = Convert.ToDecimal(prediction.Score).ToString("N2");
+        StateHasChanged();
+    }
+
+    public MyForm myForm { get; set; } = new MyForm();
+
+    public class MyForm
+    {
+        public int Age = 18;
+        public string Sex = "male";
+        public double BMI = 10.00;
+        public int Children = 0;
+        public string Smoker = "yes";
+        public string Region = "southwest";
+        public double Charges = 0;
+    }
+}

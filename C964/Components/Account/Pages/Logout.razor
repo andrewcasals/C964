@@ -1,0 +1,23 @@
+﻿@page "/Account/Logout"
+@attribute [AllowAnonymous]
+
+@using Microsoft.AspNetCore.Authentication
+
+@inject NavigationManager NavigationManager
+
+<h3>Logout</h3>
+
+@code {
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HttpContext.SignOutAsync();
+        NavigationManager.NavigateTo(ReturnUrl);
+    }
+}

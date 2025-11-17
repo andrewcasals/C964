@@ -1,0 +1,208 @@
+﻿@page "/"
+@using C964.Custom
+@using Microsoft.AspNetCore.Hosting
+@using Newtonsoft.Json
+@using ScottPlot
+
+@inject IWebHostEnvironment webHostEnvironment
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello!</h1>
+<p>Welcome to my application. I have made an application that provides information about health insruance charges. I have also made a tool that allows you to enter in several variables to get an estimated health care cost.</p>
+<p>Please find below a graph for each of the features for the used dataset and their relation to charges.</p>
+
+<img src="data:image;base64, @SexGraph()" />
+<img src="data:image;base64, @SmokerGraph()" />
+<img src="data:image;base64, @RegionGraph()" />
+<img src="data:image;base64, @ChildrenGraph()" />
+<img src="data:image;base64, @AgeGraph()" />
+<img src="data:image;base64, @BMIGraph()" />
+
+
+@code {
+    private IEnumerable<InsuranceData> records = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string filePath = Path.Combine(webHostEnvironment.WebRootPath, "Data/InsuranceData.json");
+        string jsonString = File.ReadAllText(filePath);
+        records = JsonConvert.DeserializeObject<List<InsuranceData>>(jsonString);
+    }
+
+    private string? AgeGraph()
+    {
+        ScottPlot.Plot myPlot = new();
+
+        var _records = records.Where(x => x.Age is not null && x.Charges is not null);
+
+        double[] xs = _records.Select(x => (double)x.Age).ToArray();
+        double[] ys = _records.Select(x => (double)x.Charges).ToArray();
+
+        // plot original data as a scatter plot
+        var sp = myPlot.Add.Scatter(xs, ys);
+        sp.LineWidth = 0;
+        sp.MarkerSize = 10;
+
+        // calculate the regression line
+        ScottPlot.Statistics.LinearRegression reg = new(xs, ys);
+
+        // plot the regression line
+        Coordinates pt1 = new(xs.First(), reg.GetValue(xs.First()));
+        Coordinates pt2 = new(xs.Last(), reg.GetValue(xs.Last()));
+        var line = myPlot.Add.Line(pt1, pt2);
+        line.MarkerSize = 0;
+        line.LineWidth = 2;
+        line.LinePattern = LinePattern.Dashed;
+
+        // note the formula at the top of the plot
+        myPlot.Title("Age: " + reg.FormulaWithRSquared);
+
+        // ---------------------------------------------------
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+    private string? SexGraph()
+    {
+        var _records = records.Where(x => x.Sex is not null && x.Charges is not null);
+        ScottPlot.Plot myPlot = new();
+
+        myPlot.Add.Bar(position: 1, value: _records.Where(x => x.Sex == "male").Select(x => (double)x.Charges).Average());
+        myPlot.Add.Bar(position: 2, value: _records.Where(x => x.Sex == "female").Select(x => (double)x.Charges).Average());
+
+        Tick[] ticks =
+        {
+            new(1, "Male"),
+            new(2, "Female"),
+    };
+
+        myPlot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks);
+        myPlot.Axes.Bottom.MajorTickStyle.Length = 0;
+
+        myPlot.Title("Sex");
+
+        // ---------------------------------------------------
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+    private string? BMIGraph()
+    {
+        ScottPlot.Plot myPlot = new();
+
+        var _records = records.Where(x => x.BMI is not null && x.Charges is not null);
+
+        double[] xs = _records.Select(x => (double)x.BMI).ToArray();
+        double[] ys = _records.Select(x => (double)x.Charges).ToArray();
+
+        // plot original data as a scatter plot
+        var sp = myPlot.Add.Scatter(xs, ys);
+        sp.LineWidth = 0;
+        sp.MarkerSize = 10;
+
+        // calculate the regression line
+        ScottPlot.Statistics.LinearRegression reg = new(xs, ys);
+
+        // plot the regression line
+        Coordinates pt1 = new(xs.First(), reg.GetValue(xs.First()));
+        Coordinates pt2 = new(xs.Last(), reg.GetValue(xs.Last()));
+        var line = myPlot.Add.Line(pt1, pt2);
+        line.MarkerSize = 0;
+        line.LineWidth = 2;
+        line.LinePattern = LinePattern.Dashed;
+
+        // note the formula at the top of the plot
+        myPlot.Title("BMI: " + reg.FormulaWithRSquared);
+
+        // ---------------------------------------------------
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+    private string? ChildrenGraph()
+    {
+        var _records = records.Where(x => x.Children is not null && x.Charges is not null);
+        var count = _records.Select(x => x.Children).Distinct().ToList().Count;
+        var xs = new List<double>();
+
+        var ys = new List<double>();
+        for (int i = 0; i < count; i++)
+        {
+            xs.Add(i);
+            ys.Add(_records.Where(x => x.Children == i).Select(x => (double)x.Charges).Average());
+        }
+
+        ScottPlot.Plot myPlot = new();
+        var sp = myPlot.Add.Scatter(xs, ys);
+        sp.Smooth = true;
+
+        myPlot.Title("Number of Children");
+
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+    private string? SmokerGraph()
+    {
+        var _records = records.Where(x => x.Smoker is not null && x.Charges is not null);
+
+        var smoker = _records.Where(x => x.Smoker == "yes").Select(x => (double)x.Charges).Average();
+        var nonsmoker = _records.Where(x => x.Smoker == "no").Select(x => (double)x.Charges).Average();
+
+        ScottPlot.Plot myPlot = new();
+
+        myPlot.Add.Bar(position: 1, value: smoker);
+        myPlot.Add.Bar(position: 2, value: nonsmoker);
+
+        Tick[] ticks =
+        {
+            new(1, "Smoker"),
+            new(2, "Non-Smoker"),
+        };
+
+        myPlot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks);
+        myPlot.Axes.Bottom.MajorTickStyle.Length = 0;
+
+        myPlot.Title("Smoking Status");
+
+        // ---------------------------------------------------
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+    private string? RegionGraph()
+    {
+        var _records = records.Where(x => x.Region is not null && x.Charges is not null);
+        ScottPlot.Plot myPlot = new();
+
+        myPlot.Add.Bar(position: 1, value: _records.Where(x => x.Region == "southwest").Select(x => (double)x.Charges).Average());
+        myPlot.Add.Bar(position: 2, value: _records.Where(x => x.Region == "southeast").Select(x => (double)x.Charges).Average());
+        myPlot.Add.Bar(position: 3, value: _records.Where(x => x.Region == "northwest").Select(x => (double)x.Charges).Average());
+        myPlot.Add.Bar(position: 4, value: _records.Where(x => x.Region == "northeast").Select(x => (double)x.Charges).Average());
+
+        Tick[] ticks =
+        {
+            new(1, "South West"),
+            new(2, "South East"),
+            new(3, "North West"),
+            new(4, "North East"),
+        };
+
+        myPlot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks);
+        myPlot.Axes.Bottom.MajorTickStyle.Length = 0;
+
+        myPlot.Title("Region");
+
+        // ---------------------------------------------------
+        byte[] imageBytes = myPlot.GetImageBytes(400, 300, ScottPlot.ImageFormat.Png);
+        var base64string = System.Convert.ToBase64String(imageBytes);
+        return base64string;
+    }
+
+}

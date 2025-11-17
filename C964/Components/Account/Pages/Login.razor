@@ -1,0 +1,115 @@
+﻿@page "/Account/Login"
+@attribute [AllowAnonymous]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+
+@inject ILogger<Login> Logger
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>Log in</PageTitle>
+
+<h1>Log in</h1>
+<div class="row">
+    <div class="col-md-4">
+        <section>
+
+            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+                <DataAnnotationsValidator />
+                <h2>Use a local account to log in.</h2>
+                <hr />
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                    <label for="email" class="form-label">Email</label>
+                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label for="password" class="form-label">Password</label>
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                </div>
+                <div class="checkbox mb-3">
+                    <label class="form-label">
+                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+                        Remember me
+                    </label>
+                </div>
+                <div>
+                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </div>            
+                @if(errorMessage is not null)
+                {
+                    <div class="alert" style="color:red">
+                        @errorMessage
+                    </div>
+                }
+            </EditForm>        
+        </section>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; } = "/";
+
+    public async Task LoginUser()
+    {
+        if (Input.Email == "admin@wgu.edu" && Input.Password == "Password1@")
+        {            
+            LoggedInUserModel user = new LoggedInUserModel(1, "admin", Input.Email);
+
+            var claims = user.ToClaims();
+            var identity = new ClaimsIdentity(claims, "ap-auth");
+            var principal = new ClaimsPrincipal(identity);
+
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = Input.RememberMe
+            };
+
+            await HttpContext.SignInAsync("ap-auth", principal, authProperties);
+
+            Logger.LogInformation("User logged in.");
+            NavigationManager.NavigateTo(ReturnUrl);
+        }
+        else
+        {
+            errorMessage = "Error: Invalid login attempt.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+
+    public record LoggedInUserModel(int Id, string Name, string Email)
+    {
+        public Claim[] ToClaims() =>
+            [
+                new Claim(ClaimTypes.NameIdentifier, Id.ToString()),
+            new Claim(ClaimTypes.Name, Name),
+            new Claim(ClaimTypes.Email, Email),
+        ];
+    }
+
+}
